@@ -120,6 +120,20 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     /** @ORM\Column(type="string", length=250, nullable=true) */
     private $avatar;
 
+    /** @ORM\ManyToOne(
+     *     targetEntity="Bolt\Entity\Content",
+     *     cascade={"persist", "remove"}
+     * )
+     */
+    private ?Content $region;
+
+    /** @ORM\ManyToOne(
+     *     targetEntity="Bolt\Entity\Content",
+     *     cascade={"persist", "remove"}
+     * )
+     */
+    private ?Content $country;
+
     public function __construct()
     {
     }
@@ -249,7 +263,7 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     {
         return serialize($this->__serialize());
     }
-    
+
     public function __serialize(): array
     {
         return [$this->id, $this->username, $this->password];
@@ -262,7 +276,7 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     {
         $this->__unserialize(unserialize($serialized, ['allowed_classes' => false]));
     }
-    
+
     public function __unserialize(array $data): void
     {
         // add $this->salt too if you don't use Bcrypt or Argon2i
@@ -353,5 +367,37 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     public function setAvatar(?string $avatar): void
     {
         $this->avatar = $avatar;
+    }
+
+    /**
+     * @return Content|null
+     */
+    public function getRegion(): ?Content
+    {
+        return $this->region;
+    }
+
+    /**
+     * @param Content|null $region
+     */
+    public function setRegion(?Content $region): void
+    {
+        $this->region = $region;
+    }
+
+    /**
+     * @return Content|null
+     */
+    public function getCountry(): ?Content
+    {
+        return $this->country;
+    }
+
+    /**
+     * @param Content|null $country
+     */
+    public function setCountry(?Content $country): void
+    {
+        $this->country = $country;
     }
 }

@@ -6,9 +6,12 @@ namespace Bolt\Form;
 
 use Bolt\Collection\DeepCollection;
 use Bolt\Configuration\Config;
+use Bolt\Entity\Content;
 use Bolt\Entity\User;
 use Bolt\Enum\UserStatus;
 use Bolt\Utils\LocaleHelper;
+use Doctrine\ORM\EntityRepository;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -132,6 +135,26 @@ class UserType extends AbstractType
 //            ->add('lastIp')
 //            ->add('backendTheme')
 //            ->add('userAuthToken')
+        $builder
+            ->add('region', EntityType::class, [
+                'class' => Content::class,
+                'query_builder' => function (EntityRepository $er) {
+                    return $er->createQueryBuilder('r')
+                        ->andWhere('r.contentType=:regions')
+                        ->setParameter('regions', "regions")
+                        ;
+                },
+            ])
+            ->add('country', EntityType::class, [
+                'class' => Content::class,
+                'query_builder' => function (EntityRepository $er) {
+                    return $er->createQueryBuilder('c')
+                        ->andWhere('c.contentType=:countries')
+                        ->setParameter('countries', "countries")
+                        ;
+                },
+            ])
+        ;
     }
 
     public function configureOptions(OptionsResolver $resolver): void
