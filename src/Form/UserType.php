@@ -138,8 +138,18 @@ class UserType extends AbstractType
         $builder
             ->add('region', EntityType::class, [
                 'class' => Content::class,
+                'choice_label' => function (Content $country) {
+                    foreach ($country->getFields() as $field) {
+                        if ($field->getName() === 'title') {
+                            return $field->getValue()[0];
+                        }
+                    }
+                    return null;
+                },
                 'query_builder' => function (EntityRepository $er) {
                     return $er->createQueryBuilder('r')
+                        ->select('r,f')
+                        ->innerJoin('r.fields', 'f')
                         ->andWhere('r.contentType=:regions')
                         ->setParameter('regions', "regions")
                         ;
@@ -147,8 +157,18 @@ class UserType extends AbstractType
             ])
             ->add('country', EntityType::class, [
                 'class' => Content::class,
+                'choice_label' => function (Content $country) {
+                    foreach ($country->getFields() as $field) {
+                        if ($field->getName() === 'title') {
+                            return $field->getValue()[0];
+                        }
+                    }
+                    return null;
+                },
                 'query_builder' => function (EntityRepository $er) {
                     return $er->createQueryBuilder('c')
+                        ->select('c,f')
+                        ->innerJoin('c.fields', 'f')
                         ->andWhere('c.contentType=:countries')
                         ->setParameter('countries', "countries")
                         ;
