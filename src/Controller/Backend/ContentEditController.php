@@ -20,6 +20,7 @@ use Bolt\Enum\Statuses;
 use Bolt\Event\ContentEvent;
 use Bolt\Event\Listener\ContentFillListener;
 use Bolt\Repository\ContentRepository;
+use Bolt\Repository\UserRepository;
 use Bolt\Repository\FieldRepository;
 use Bolt\Repository\MediaRepository;
 use Bolt\Repository\RelationRepository;
@@ -32,6 +33,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Entity;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
@@ -55,6 +57,9 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /** @var ContentRepository */
     private $contentRepository;
 
+    /** @var UserRepository */
+    private $userRepository;
+
     /** @var MediaRepository */
     private $mediaRepository;
 
@@ -77,6 +82,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         TaxonomyRepository $taxonomyRepository,
         RelationRepository $relationRepository,
         ContentRepository $contentRepository,
+        UserRepository $userRepository,
         MediaRepository $mediaRepository,
         EntityManagerInterface $em,
         UrlGeneratorInterface $urlGenerator,
@@ -87,6 +93,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->taxonomyRepository = $taxonomyRepository;
         $this->relationRepository = $relationRepository;
         $this->contentRepository = $contentRepository;
+        $this->userRepository = $userRepository;
         $this->mediaRepository = $mediaRepository;
         $this->em = $em;
         $this->urlGenerator = $urlGenerator;
@@ -98,7 +105,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /**
      * @Route("/new/{contentType}", name="bolt_content_new", methods={"GET|POST"})
      */
-    public function new(string $contentType): Response
+    public function new(string $contentType, Request $request): Response
     {
         $content = new Content();
 
@@ -113,23 +120,24 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->contentFillListener->fillContent($content);
 
         if ($this->request->getMethod() === 'POST') {
-            return $this->save($content);
+
+            return $this->save($content, null, $request);
         }
 
-        return $this->edit($content);
+        return $this->edit($content, $request);
     }
 
     /**
      * @Route("/edit/{id}", name="bolt_content_edit", methods={"GET"}, requirements={"id": "\d+"})
      */
-    public function edit(Content $content): Response
+    public function edit(Content $content, Request $request): Response
     {
+        $users = $this->userRepository->findAll();
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_VIEW, $content);
-
         $event = new ContentEvent($content);
         $this->dispatcher->dispatch($event, ContentEvent::ON_EDIT);
 
-        return $this->renderEditor($content);
+        return $this->renderEditor($content, null, $users);
     }
 
     /**
@@ -176,7 +184,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /**
      * @Route("/edit/{id}", name="bolt_content_edit_post", methods={"POST"}, requirements={"id": "\d+"})
      */
-    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null): Response
+    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null, Request $request): Response
     {
         $this->validateCsrf('editrecord');
 
@@ -195,6 +203,11 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         }
 
         $content = $this->contentFromPost($originalContent);
+
+        if ($this->request->getMethod() === 'POST' && $request->request->has('user')) {
+            $contentUser = $this->userRepository->findOneBy(['id' => $request->request->get('user')]);
+            $content->setUser($contentUser);
+        }
 
         // check again on new/updated content, this is needed in case the save action is used to create a new item
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_EDIT, $content);
@@ -635,10 +648,11 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         return $post['_edit_locale'] ?? null;
     }
 
-    private function renderEditor(Content $content, $errors = null): Response
+    private function renderEditor(Content $content, $errors = null, array $users = null): Response
     {
         $twigvars = [
             'record' => $content,
+            'users' => $users,
             'locales' => $content->getLocales(),
             'defaultlocale' => $this->defaultLocale,
             'currentlocale' => $this->getEditLocale($content),

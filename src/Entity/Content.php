@@ -81,6 +81,14 @@ class Content
     private $author;
 
     /**
+     * @var User
+     *
+     * @ORM\ManyToOne(targetEntity="Bolt\Entity\User", fetch="EAGER")
+     * @ORM\JoinColumn(nullable=true)
+     */
+    private $user;
+
+    /**
      * @var string
      *
      * @ORM\Column(type="string", length=191)
@@ -375,6 +383,16 @@ class Content
     public function setAuthor(?User $author): void
     {
         $this->author = $author;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): void
+    {
+        $this->user = $user;
     }
 
     public function getStatus(): ?string
