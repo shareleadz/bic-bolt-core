@@ -40,7 +40,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Tightenco\Collect\Support\Collection;
-
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 /**
  * CRUD + status, duplicate, for content - note that listing is handled by ListingController.php
  */
@@ -78,6 +78,8 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /** @var string */
     protected $defaultLocale;
 
+    private $passwordHasher;
+
     public function __construct(
         TaxonomyRepository $taxonomyRepository,
         RelationRepository $relationRepository,
@@ -88,6 +90,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         UrlGeneratorInterface $urlGenerator,
         ContentFillListener $contentFillListener,
         EventDispatcherInterface $dispatcher,
+        UserPasswordHasherInterface $passwordHasher,
         string $defaultLocale
     ) {
         $this->taxonomyRepository = $taxonomyRepository;
@@ -100,6 +103,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->contentFillListener = $contentFillListener;
         $this->dispatcher = $dispatcher;
         $this->defaultLocale = $defaultLocale;
+        $this->passwordHasher = $passwordHasher;
     }
 
     /**
@@ -204,10 +208,55 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
         $content = $this->contentFromPost($originalContent);
 
+
         if ($this->request->getMethod() === 'POST' && $request->request->has('user')) {
             $contentUser = $this->userRepository->findOneBy(['id' => $request->request->get('user')]);
             $content->setUser($contentUser);
+
         }
+
+
+        // get reference from the created content type
+
+        if ($content->getDefinition()->getSlug() === 'distributors') {
+
+            $email = $content->getField('email')->getValue()[0];
+            $plaintextPassword = $content->getField('password')->getValue()[0];
+            $displayName = $content->getField('displayName')->getValue()[0];
+            $region = $content->getField('region')->getValue()[0];
+            $country = $content->getField('country')->getValue()[0];
+
+
+            $cUser = $this->userRepository->findOneBy(['email' => $email]);
+
+            if ($content->getId() !== null) {
+                //TODO:
+                if ($plaintextPassword !== null) {
+                    $hashedPassword = $this->passwordHasher->hashPassword($cUser ,$plaintextPassword);
+                    $cUser->setPassword($hashedPassword);
+                }
+                // TODO: check existing user with email
+                $cUser->setEmail($email);
+                $cUser->setDisplayName($displayName);
+            } else {
+                $newDistributor = new User();
+                // TODO: check existing user with email
+                $newDistributor->setEmail($email);
+                $hashedPassword = $this->passwordHasher->hashPassword($newDistributor ,$plaintextPassword);
+                $newDistributor->setPassword($hashedPassword);
+                $newDistributor->setDisplayName($displayName);
+                $newDistributor->setUsername($displayName);
+                $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
+                $newDistributor->setCountry($this->getUser()->getCountry());
+
+                $content->setUser($newDistributor);
+
+                $this->em->persist($newDistributor);
+                $this->em->flush();
+            }
+            $content->getField('password')->setValue(null);
+        }
+
 
         // check again on new/updated content, this is needed in case the save action is used to create a new item
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_EDIT, $content);
@@ -258,6 +307,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->dispatcher->dispatch($event, ContentEvent::POST_SAVE);
 
         return new RedirectResponse($url);
+
     }
 
     /**
