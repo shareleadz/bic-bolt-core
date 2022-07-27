@@ -121,15 +121,13 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     private $avatar;
 
     /** @ORM\ManyToOne(
-     *     targetEntity="Bolt\Entity\Content",
-     *     cascade={"persist", "remove"}
+     *     targetEntity="Bolt\Entity\Content"
      * )
      */
     private ?Content $region;
 
     /** @ORM\ManyToOne(
-     *     targetEntity="Bolt\Entity\Content",
-     *     cascade={"persist", "remove"}
+     *     targetEntity="Bolt\Entity\Content"
      * )
      */
     private ?Content $country;
