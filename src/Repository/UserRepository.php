@@ -8,6 +8,7 @@ use Bolt\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\Query\Expr;
 use Doctrine\Persistence\ManagerRegistry;
+use PhpParser\Node\Expr\Array_;
 
 class UserRepository extends ServiceEntityRepository
 {
@@ -19,18 +20,24 @@ class UserRepository extends ServiceEntityRepository
         parent::__construct($registry, User::class);
     }
 
-    // get user by email and username
-    public function getUserByEmailOrUsername(string $email, string $username): ?User
+    public function getUserByEmailOrUsername(string $email, string $username, ?int $userId = null): ?User
     {
         $qb = $this->createQueryBuilder('u');
         $qb->where($qb->expr()->orX(
             $qb->expr()->eq('u.email', ':email'),
             $qb->expr()->eq('u.username', ':username')
+//            $qb->expr()->neq('u.id', ':userId')
         ));
-        $qb->setParameters([
-            'email' => $email,
-            'username' => $username,
-        ]);
+//        $qb->setParameters([
+//            'email' => $email,
+//            'username' => $username,
+//        ]);
+        $qb->setParameter('email', $email);
+        $qb->setParameter('username', $username);
+        if ($userId !== null) {
+            $qb->andWhere('u.id != :userId');
+            $qb->setParameter('userId', $userId);
+        }
         return $qb->getQuery()->getOneOrNullResult();
     }
 

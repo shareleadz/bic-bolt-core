@@ -189,6 +189,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
     /**
      * @Route("/edit/{id}", name="bolt_content_edit_post", methods={"POST"}, requirements={"id": "\d+"})
+     * @throws \Doctrine\ORM\NonUniqueResultException
      */
     public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null, Request $request): Response
     {
@@ -298,63 +299,82 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
         if ($content->getDefinition()->getSlug() === 'distributors') {
 
+            /** @var User $cUser */
+            $cUser = $content->getId() !== null ? $content->getUser() : null;
+
             $email = $content->getField('email')->getValue()[0];
             $displayName = $content->getField('displayName')->getValue()[0];
-
-            $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $displayName);
-
             $plaintextPassword = $content->getField('password')->getValue()[0];
 
-            if ($content->getId() === null) {
-                if (!$dupUser) {
-                    $newDistributor = new User();
-                    $newDistributor->setEmail($email);
-                    $hashedPassword = $this->passwordHasher->hashPassword($newDistributor, $plaintextPassword);
-                    $newDistributor->setPassword($hashedPassword);
-                    $newDistributor->setDisplayName($displayName);
-                    $newDistributor->setUsername($displayName);
-                    $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
-                    $newDistributor->setCountry($this->getUser()->getCountry());
+            $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $displayName, $cUser !== null ? $cUser->getId() : null);
 
-                    $content->setUser($newDistributor);
-                    $content->getField('password')->setValue(null);
-                    $content->getField('last_update')->setValue(new DateTime());
-                    $content->getField('updated_by')->setValue($this->getUser()->getUsername());
+            if ($dupUser !== null) {
+                $url = '/bolt/content/distributors';
 
-                    $this->em->persist($content);
-                    $this->em->persist($newDistributor);
-                    $this->em->flush();
-//
-                    $this->addFlash('success', 'user.created_successfully');
-                    $url = '/bolt/content/distributors';
-                } else {
-                    $url = '/bolt/new/distributors';
-                    $this->addFlash('danger', 'content.already_exists');
+                if ($content->getId() !== null) {
+                    $urlParams = [
+                        'id' => $content->getId(),
+                        'edit_locale' => $this->getEditLocale($content) ?: null,
+                    ];
+                    $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
                 }
-            }else {
+                $this->addFlash('danger', 'information.user_already_exists');
 
-                $event = new ContentEvent($content);
-                $this->dispatcher->dispatch($event, ContentEvent::PRE_SAVE);
+                return new RedirectResponse($url);
+            }
 
-                /* Note: Doctrine also calls preUpdate() -> Event/Listener/FieldFillListener.php */
+            if ($content->getId() === null) {
+                $newDistributor = new User();
+                $newDistributor->setEmail($email);
+                $hashedPassword = $this->passwordHasher->hashPassword($newDistributor, $plaintextPassword);
+                $newDistributor->setPassword($hashedPassword);
+                $newDistributor->setDisplayName($displayName);
+                $newDistributor->setUsername($displayName);
+                $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
+                $newDistributor->setCountry($this->getUser()->getCountry());
+                $content->setUser($newDistributor);
+                $content->getField('password')->setValue(null);
+                $content->getField('last_update')->setValue(new DateTime());
+                $content->getField('updated_by')->setValue($this->getUser()->getUsername());
+
                 $this->em->persist($content);
+                $this->em->persist($newDistributor);
                 $this->em->flush();
 
-                $this->addFlash('success', 'content.updated_successfully');
+                $this->addFlash('success', 'user.created_successfully');
+                $url = '/bolt/content/distributors';
+            } else {
+                $cUser = $content->getUser();
+                if ($plaintextPassword !== null) {
+                    $hashedPassword = $this->passwordHasher->hashPassword($cUser, $plaintextPassword);
+                    $cUser->setPassword($hashedPassword);
+                }
+
+                $cUser->setEmail($email);
+                $cUser->setDisplayName($displayName);
+                $cUser->setUsername($displayName);
+                $cUser->setCountry($this->getUser()->getCountry());
+
+                $content->getField('password')->setValue(null);
+                $content->getField('last_update')->setValue(new DateTime());
+                $content->getField('updated_by')->setValue($this->getUser()->getUsername());
+                $content->setUser($cUser);
+                $this->em->persist($content);
+                $this->em->persist($cUser);
+                $this->em->flush();
 
                 $urlParams = [
                     'id' => $content->getId(),
                     'edit_locale' => $this->getEditLocale($content) ?: null,
                 ];
                 $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
-
                 $event = new ContentEvent($content);
                 $this->dispatcher->dispatch($event, ContentEvent::POST_SAVE);
-//                $url = '/bolt/new/distributors';
-//                $this->addFlash('success', 'content.edit_successfully');
+                $this->addFlash('success', 'user updated successfully');
             }
 
         } else {
+
             $event = new ContentEvent($content);
             $this->dispatcher->dispatch($event, ContentEvent::PRE_SAVE);
 
