@@ -255,10 +255,10 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
             $cUser = $content->getId() !== null ? $content->getUser() : null;
 
             $email = $content->getField('email')->getValue()[0];
-            $displayName = $content->getField('displayName')->getValue()[0];
+            $username = $content->getField('username')->getValue()[0];
             $plaintextPassword = $content->getField('password')->getValue()[0];
 
-            $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $displayName, $cUser !== null ? $cUser->getId() : null);
+            $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $username, $cUser !== null ? $cUser->getId() : null);
 
             if ($dupUser !== null) {
                 $url = '/bolt/content/distributors';
@@ -280,8 +280,8 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $newDistributor->setEmail($email);
                 $hashedPassword = $this->passwordHasher->hashPassword($newDistributor, $plaintextPassword);
                 $newDistributor->setPassword($hashedPassword);
-                $newDistributor->setDisplayName($displayName);
-                $newDistributor->setUsername($displayName);
+                $newDistributor->setDisplayName($username);
+                $newDistributor->setUsername($username);
                 $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
                 $newDistributor->setCountry($this->getUser()->getCountry());
                 $content->setUser($newDistributor);
@@ -303,8 +303,8 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 }
 
                 $cUser->setEmail($email);
-                $cUser->setDisplayName($displayName);
-                $cUser->setUsername($displayName);
+                $cUser->setDisplayName($username);
+                $cUser->setUsername($username);
                 $cUser->setCountry($this->getUser()->getCountry());
 
                 $content->getField('password')->setValue(null);
