@@ -47,6 +47,21 @@ class UserRepository extends ServiceEntityRepository
         return $user instanceof User ? $user : null;
     }
 
+    /**
+     * @throws \Doctrine\ORM\NonUniqueResultException
+     */
+    public function findOneByUsernameWithProfile(string $username): ?User
+    {
+        $qb = $this->createQueryBuilder('u');
+        $qb
+            ->select('u,p')
+            ->where('u.username = :username')
+            ->setParameter('username', $username)
+            ->leftJoin('u.profile', 'p');
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
     public function findOneByCredentials(string $username): ?User
     {
         $qb = $this->createQueryBuilder('user');

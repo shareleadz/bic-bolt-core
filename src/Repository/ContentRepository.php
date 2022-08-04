@@ -152,12 +152,21 @@ class ContentRepository extends ServiceEntityRepository
         return $this->find($id);
     }
 
+    public function findOneByUserId(int $user): ?Content
+    {
+        $qb = $this->getQueryBuilder();
+        $qb
+            ->where('content.user = :user')
+            ->setParameter('user', $user);
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
     /*
     * @param string|int $slug
     */
     public function findOneBySlug($slug, ?ContentType $contentType = null): ?Content
     {
-        $slug = (string) $slug;
+        $slug = (string)$slug;
         $qb = $this->getQueryBuilder();
         $connection = $qb->getEntityManager()->getConnection();
 
