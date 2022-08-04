@@ -83,7 +83,7 @@ class Content
     /**
      * @var User
      *
-     * @ORM\ManyToOne(targetEntity="Bolt\Entity\User", fetch="EAGER")
+     * @ORM\OneToOne(targetEntity="Bolt\Entity\User", fetch="EAGER", inversedBy="profile")
      * @ORM\JoinColumn(nullable=true)
      */
     private $user;

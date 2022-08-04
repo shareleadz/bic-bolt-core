@@ -97,6 +97,7 @@ class ContentFixtures extends BaseFixture implements DependentFixtureInterface, 
                     $author = $this->getRandomReference('user');
                 }
 
+
                 $content = new Content();
                 $content->setDefinition($contentType);
                 $content->setContentType($contentType['slug']);

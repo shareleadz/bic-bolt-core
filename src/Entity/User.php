@@ -33,6 +33,14 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     private $id;
 
     /**
+     * @var Content
+     *
+     * @ORM\OneToOne(targetEntity="Bolt\Entity\Content", fetch="EAGER", mappedBy="user")
+     * @ORM\JoinColumn(nullable=true)
+     */
+    private $profile;
+
+    /**
      * @var string
      *
      * @ORM\Column(type="string")
@@ -99,6 +107,7 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
      */
     private $locale;
 
+
     /** @ORM\Column(type="string", length=191, nullable=true) */
     private $backendTheme;
 
@@ -119,6 +128,16 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
 
     /** @ORM\Column(type="string", length=250, nullable=true) */
     private $avatar;
+
+    public function getProfile(): ?Content
+    {
+        return $this->profile;
+    }
+
+    public function setProfile(?Content $profile): void
+    {
+        $this->profile = $profile;
+    }
 
     /** @ORM\ManyToOne(
      *     targetEntity="Bolt\Entity\Content"
