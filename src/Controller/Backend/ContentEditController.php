@@ -33,9 +33,12 @@ use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Entity;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -111,7 +114,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /**
      * @Route("/new/{contentType}", name="bolt_content_new", methods={"GET|POST"})
      */
-    public function new(string $contentType, Request $request): Response
+    public function new(string $contentType, Request $request, MailerInterface $mailer): Response
     {
         $content = new Content();
 
@@ -127,7 +130,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
         if ($this->request->getMethod() === 'POST') {
 
-            return $this->save($content, null, $request);
+            return $this->save($content, null, $request, $mailer);
         }
 
         return $this->edit($content, $request);
@@ -190,8 +193,9 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /**
      * @Route("/edit/{id}", name="bolt_content_edit_post", methods={"POST"}, requirements={"id": "\d+"})
      * @throws \Doctrine\ORM\NonUniqueResultException
+     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
-    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null, Request $request): Response
+    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null, Request $request, MailerInterface $mailer): Response
     {
         $this->validateCsrf('editrecord');
         $url = null;
@@ -295,6 +299,20 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $this->em->persist($content);
                 $this->em->persist($newDistributor);
                 $this->em->flush();
+
+                $newDistributorEmail = (new TemplatedEmail())
+                    ->from('bic@company.com')
+                    ->to('rredouane342@gmail.com')
+                    ->subject('New distributor account')
+                    ->htmlTemplate('email/new_distributor.twig')
+                    ->context([
+                        'username' => $newDistributor->getUsername(),
+                        'distributorEmail' => $newDistributor->getEmail(),
+                        'corp_name' => $content->getFieldValue('corp_name'),
+                        'password' => $plaintextPassword,
+                    ]);
+
+                $mailer->send($newDistributorEmail);
 
                 $this->addFlash('success', 'user.created_successfully');
                 $url = '/bolt/content/distributors';
