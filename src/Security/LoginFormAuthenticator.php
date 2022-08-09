@@ -89,7 +89,9 @@ class LoginFormAuthenticator extends AbstractAuthenticator implements Authentica
             $request->getSession()->set(Security::AUTHENTICATION_ERROR, $exception);
         }
 
+        $request->getSession()->getFlashBag()->add('danger', $exception->getMessage());
         // Redirect back to where we came from
         return new RedirectResponse($request->headers->get('referer'));
+
     }
 }
