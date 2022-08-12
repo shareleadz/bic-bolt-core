@@ -135,7 +135,14 @@
         {% do userForm.roles.setRendered() %}
     {% endif %}
 
-    {# ===== STATUS ===== #}
+    {# ===== REGION ===== #}
+    {{ form_row(userForm.region) }}
+
+    {{ form_row(userForm.country) }}
+
+
+
+{# ===== STATUS ===== #}
 
     {% if userForm.status is defined %}
         {% set statusOptions = [] %}
@@ -197,3 +204,40 @@
     {# DONT TOUCH THAT ID! #}
     {{ macro.button('action.save', 'fa-save', 'primary', {'type': 'submit', 'form': 'edituser', 'name': 'save'}) }}
 {{ form_end(userForm) }}
+
+<script>
+
+    const submitFormOnChange = () => {
+        var formData = new FormData();
+        for (let item of document.querySelector('#edituser').elements) {
+            formData.append(item.name, item.value);
+        }
+
+        document.querySelector('#user_region').addEventListener("change", e => {
+            formData.append(e.target.name, e.target.value);
+            document.querySelector('.loading').replaceWith('loading')
+            var req = new XMLHttpRequest();
+
+            // TODO MAKE URL READ FROM .ENV
+            req.open('POST', 'http://127.0.0.1:8000/bolt/user-edit/add');
+
+            req.onload = (event) => {
+
+                const newElement = document.createElement('div');
+                newElement.innerHTML = event.target.response;
+                const newCountry = newElement.querySelector('#user_country')
+                document.querySelector('#user_country').replaceWith(newCountry);
+            }
+            req.send(formData);
+
+        });
+    }
+
+
+    let loadingState = false
+    setTimeout(() => {
+        submitFormOnChange()
+
+    }, 500)
+
+</script>

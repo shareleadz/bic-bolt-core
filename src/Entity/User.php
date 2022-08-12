@@ -143,13 +143,13 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
      *     targetEntity="Bolt\Entity\Content"
      * )
      */
-    private ?Content $region;
+    private ?Content $region = null;
 
     /** @ORM\ManyToOne(
      *     targetEntity="Bolt\Entity\Content"
      * )
      */
-    private ?Content $country;
+    private ?Content $country = null;
 
     public function __construct()
     {
