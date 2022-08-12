@@ -9,7 +9,9 @@ use Bolt\Configuration\Config;
 use Bolt\Entity\Content;
 use Bolt\Entity\User;
 use Bolt\Enum\UserStatus;
+use Bolt\Repository\ContentRepository;
 use Bolt\Utils\LocaleHelper;
+use Doctrine\ORM\Cache\Region;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -18,7 +20,10 @@ use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Security\Core\Security;
 use Twig\Environment;
@@ -34,10 +39,17 @@ class UserType extends AbstractType
     /** @var DeepCollection */
     private $avatarConfig;
 
+    /** @var ContentRepository */
+    private $contentRepository;
+
     /** @var Security */
     private $security;
+    /**
+     * @var RequestStack
+     */
+    private $requestStack;
 
-    public function __construct(LocaleHelper $localeHelper, Environment $twig, Config $config, Security $security)
+    public function __construct(LocaleHelper $localeHelper, Environment $twig, Config $config, Security $security, ContentRepository $contentRepository, RequestStack $requestStack)
     {
         $this->localeHelper = $localeHelper;
         $this->twig = $twig;
@@ -45,8 +57,11 @@ class UserType extends AbstractType
         /** @var DeepCollection $config */
         $config = $config->get('general');
         $this->avatarConfig = $config->get('user_avatar');
+        $this->contentRepository = $contentRepository;
+
 
         $this->security = $security;
+        $this->requestStack = $requestStack;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -135,6 +150,7 @@ class UserType extends AbstractType
 //            ->add('lastIp')
 //            ->add('backendTheme')
 //            ->add('userAuthToken')
+
         $builder
             ->add('region', EntityType::class, [
                 'class' => Content::class,
@@ -151,30 +167,51 @@ class UserType extends AbstractType
                         ->select('r,f')
                         ->innerJoin('r.fields', 'f')
                         ->andWhere('r.contentType=:regions')
-                        ->setParameter('regions', "regions")
-                        ;
+                        ->setParameter('regions', "regions");
                 },
-            ])
-            ->add('country', EntityType::class, [
-                'class' => Content::class,
-                'choice_label' => function (Content $country) {
-                    foreach ($country->getFields() as $field) {
-                        if ($field->getName() === 'title') {
-                            return $field->getValue()[0];
+
+            ]);
+
+        $builder->addEventListener(
+            FormEvents::PRE_SET_DATA,
+            function (FormEvent $event) {
+                $form = $event->getForm();
+
+                // this would be your entity, i.e. SportMeetup
+                $data = $event->getData();
+                if (!$data) {
+                    return;
+                }
+
+                $form->add('country', EntityType::class, [
+
+                    'class' => Content::class,
+                    'choice_label' => function (Content $country) {
+                        $region = $this->requestStack->getCurrentRequest()->request->get('user[region]');
+
+                        foreach ($country->getFields() as $field) {
+                            if ($field->getName() === 'title') {
+                                return $field->getValue()[0];
+                            }
                         }
-                    }
-                    return null;
-                },
-                'query_builder' => function (EntityRepository $er) {
-                    return $er->createQueryBuilder('c')
-                        ->select('c,f')
-                        ->innerJoin('c.fields', 'f')
-                        ->andWhere('c.contentType=:countries')
-                        ->setParameter('countries', "countries")
-                        ;
-                },
-            ])
-        ;
+                        return null;
+                    },
+                    'query_builder' => function (EntityRepository $er) {
+                    $region = $this->requestStack->getCurrentRequest()->request->has('user') ? $this->requestStack->getCurrentRequest()->request->get('user')['region'] : 0;
+                        return $er->createQueryBuilder('c')
+                            ->select('c,f')
+                            ->innerJoin('c.fields', 'f')
+                            ->innerJoin('c.relationsFromThisContent', 'rf')
+                            ->andWhere('c.contentType=:countries')
+                            ->andWhere('rf.toContent=:region')
+                            ->setParameter('countries', "countries")
+                            ->setParameter('region',  $region)
+                            ;
+                    },
+                ]);
+            }
+        );
+
     }
 
     public function configureOptions(OptionsResolver $resolver): void
