@@ -13,6 +13,7 @@ use Doctrine\ORM\Query;
 use Pagerfanta\Adapter\DoctrineORMAdapter;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Core\Security;
 
 /**
  *  Handler class to perform select query and return a resultset.
@@ -20,11 +21,24 @@ use Symfony\Component\HttpFoundation\Request;
 class SelectQueryHandler
 {
     /**
-     * @return Content|Pagerfanta|null
+     * @var Security|null
      */
-    public function __invoke(ContentQueryParser $contentQuery)
+    private $security;
+
+    public function __construct(Security $security = null)
     {
+        $this->security = $security;
+    }
+
+    /**
+     * @return Content|Pagerfanta|null
+     * @throws \Doctrine\ORM\NonUniqueResultException
+     */
+    public function __invoke(ContentQueryParser $contentQuery, Security $security = null)
+    {
+
         $repo = $contentQuery->getContentRepository();
+
         $qb = $repo->getQueryBuilder();
 
         /** @var SelectQuery $selectQuery */
@@ -51,7 +65,20 @@ class SelectQueryHandler
 
         $contentQuery->runDirectives($selectQuery);
 
+        if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER') {
+            if ($security->isGranted("ROLE_COUNTRY_MANAGER")) {
+                $qb->innerJoin('content.relationsFromThisContent', 'rf')
+                    ->andWhere('rf.toContent=:country')
+                    ->setParameter('country', $security->getUser()->getCountry()->getId());
+            }
+        }
+
         if ($selectQuery->shouldReturnSingle()) {
+            if (null !== $security && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER') {
+                $qb->innerJoin('content.relationsFromThisContent', 'rf')
+                    ->andWhere('rf.toContent=:country')
+                    ->setParameter('country', $this->security->getUser()->getCountry()->getId());
+            }
             return $qb
                 ->setMaxResults(1)
                 ->getQuery()

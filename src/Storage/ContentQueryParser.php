@@ -13,6 +13,7 @@ use Bolt\Storage\Handler\SelectQueryHandler;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Security;
 
 /**
  *  Handler class to convert the DSL for content queries into an
@@ -64,6 +65,10 @@ class ContentQueryParser
 
     /** @var DirectiveHandler */
     private $directiveHandler;
+    /**
+     * @var Security
+     */
+    private $security;
 
     /**
      * Constructor.
@@ -72,6 +77,7 @@ class ContentQueryParser
         RequestStack $requestStack,
         ContentRepository $repo,
         Config $config,
+        Security $security,
         DirectiveHandler $directiveHandler,
         ?QueryInterface $queryHandler = null)
     {
@@ -85,6 +91,7 @@ class ContentQueryParser
         $this->setupDefaults();
         $this->config = $config;
         $this->directiveHandler = $directiveHandler;
+        $this->security = $security;
     }
 
     /**
@@ -92,7 +99,7 @@ class ContentQueryParser
      */
     protected function setupDefaults(): void
     {
-        $this->addHandler('select', new SelectQueryHandler());
+        $this->addHandler('select', new SelectQueryHandler($this->security));
         $this->addHandler('namedselect', new IdentifiedSelectHandler());
     }
 
@@ -392,7 +399,7 @@ class ContentQueryParser
     {
         $this->parse();
 
-        return call_user_func($this->handlers[$this->getOperation()], $this);
+        return call_user_func($this->handlers[$this->getOperation()], $this, $this->security);
     }
 
     /**
