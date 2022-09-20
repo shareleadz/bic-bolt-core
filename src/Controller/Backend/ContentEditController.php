@@ -299,10 +299,9 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $this->em->persist($content);
                 $this->em->persist($newDistributor);
                 $this->em->flush();
-
                 $newDistributorEmail = (new TemplatedEmail())
                     ->from('bic@company.com')
-                    ->to('rredouane342@gmail.com')
+                    ->to($newDistributor->getEmail())
                     ->subject('New distributor account')
                     ->htmlTemplate('email/new_distributor.twig')
                     ->context([
