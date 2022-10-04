@@ -53,7 +53,6 @@ class SelectQueryHandler
         $selectQuery->setParameters($contentQuery->getParameters());
 
         $contentQuery->runScopes($selectQuery);
-
         // This is required. Not entirely sure why.
         $selectQuery->build();
 
@@ -66,7 +65,7 @@ class SelectQueryHandler
         $contentQuery->runDirectives($selectQuery);
 
         if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER') {
-            if ($security->isGranted("ROLE_COUNTRY_MANAGER")) {
+            if ($security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
                     ->andWhere('rf.toContent=:country')
                     ->setParameter('country', $security->getUser()->getCountry()->getId());
@@ -74,10 +73,10 @@ class SelectQueryHandler
         }
 
         if ($selectQuery->shouldReturnSingle()) {
-            if (null !== $security && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER') {
+            if (null !== $security && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER' && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
                     ->andWhere('rf.toContent=:country')
-                    ->setParameter('country', $this->security->getUser()->getCountry()->getId());
+                    ->setParameter('country', $security->getUser()->getCountry()->getId());
             }
             return $qb
                 ->setMaxResults(1)
