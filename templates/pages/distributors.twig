@@ -1,0 +1,15 @@
+{% extends '@bolt/_base/layout.html.twig' %}
+{% import '@bolt/_macro/_macro.html.twig' as macro %}
+
+{% block title %}
+		{{ macro.icon('tachometer-alt') }}
+		{{ config.get('general/sitename') }}
+{% endblock title %}
+
+{% block main %}
+	{{ widgets('dashboard_below_header') }}
+	<div id="listing">
+		{% include '@bolt/_partials/_content_listing.html.twig' with {'records': records, 'type': 'dashboard' } %}
+	</div>
+	{{ widgets('dashboard_bottom') }}
+{% endblock %}

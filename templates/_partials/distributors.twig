@@ -1,0 +1,10 @@
+	{{ dump('records', records ) }}</pre>
+{% for distributor in records %}
+	{# {{ dump("user country", app.user.country.title ) }} #}
+	{{ dump("dist country", distributor|related('countries')|order('title')[0].title ) }}
+	{% if app.user.country.title != distributor|related('countries')|order('title')[0].title %}
+		<pre>
+            {{ dump("HERE") }}
+        </pre>
+	{% endif %}
+{% endfor %}
