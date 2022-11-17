@@ -215,11 +215,11 @@
 
         document.querySelector('#user_region').addEventListener("change", e => {
             formData.append(e.target.name, e.target.value);
-            document.querySelector('.loading').replaceWith('loading')
+            // document.querySelector('.loading').replaceWith('loading')
             var req = new XMLHttpRequest();
 
             // TODO MAKE URL READ FROM .ENV
-            req.open('POST', 'http://127.0.0.1:8000/bolt/user-edit/add');
+            req.open('POST', '/bolt/user-edit/add');
 
             req.onload = (event) => {
 
@@ -237,7 +237,6 @@
     let loadingState = false
     setTimeout(() => {
         submitFormOnChange()
-
     }, 500)
 
 </script>
