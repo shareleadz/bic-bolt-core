@@ -209,10 +209,11 @@
 
     const submitFormOnChange = (e) => {
         var formData = new FormData();
+        let userRegion =  document.querySelector('#user_region');
         for (let item of document.querySelector('#edituser').elements) {
             formData.append(item.name, item.value);
         }
-        formData.append(e.target.name, e.target.value);
+        formData.append(userRegion.target.name, userRegion.target.value);
         // document.querySelector('.loading').replaceWith('loading')
         var req = new XMLHttpRequest();
 
