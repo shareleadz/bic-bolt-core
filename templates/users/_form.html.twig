@@ -207,32 +207,28 @@
 
 <script>
 
-    const submitFormOnChange = () => {
+    const submitFormOnChange = (e) => {
         var formData = new FormData();
         for (let item of document.querySelector('#edituser').elements) {
             formData.append(item.name, item.value);
         }
+        formData.append(e.target.name, e.target.value);
+        // document.querySelector('.loading').replaceWith('loading')
+        var req = new XMLHttpRequest();
 
-        document.querySelector('#user_region').addEventListener("change", e => {
-            formData.append(e.target.name, e.target.value);
-            // document.querySelector('.loading').replaceWith('loading')
-            var req = new XMLHttpRequest();
+        // TODO MAKE URL READ FROM .ENV
+        req.open('POST', '/bolt/user-edit/add');
 
-            // TODO MAKE URL READ FROM .ENV
-            req.open('POST', '/bolt/user-edit/add');
+        req.onload = (event) => {
 
-            req.onload = (event) => {
-
-                const newElement = document.createElement('div');
-                newElement.innerHTML = event.target.response;
-                const newCountry = newElement.querySelector('#user_country')
-                document.querySelector('#user_country').replaceWith(newCountry);
-            }
-            req.send(formData);
-
-        });
+            const newElement = document.createElement('div');
+            newElement.innerHTML = event.target.response;
+            const newCountry = newElement.querySelector('#user_country')
+            document.querySelector('#user_country').replaceWith(newCountry);
+        }
+        req.send(formData);
     }
-
+    document.querySelector('#user_region').addEventListener("change", submitFormOnChange);
 
     let loadingState = false
     setTimeout(() => {
