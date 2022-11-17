@@ -213,7 +213,7 @@
         for (let item of document.querySelector('#edituser').elements) {
             formData.append(item.name, item.value);
         }
-        formData.append(userRegion.target.name, userRegion.target.value);
+        formData.append(userRegion.name, userRegion.value);
         // document.querySelector('.loading').replaceWith('loading')
         var req = new XMLHttpRequest();
 
