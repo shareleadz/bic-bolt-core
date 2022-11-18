@@ -128,7 +128,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         /** @var User $user */
         $user = $this->getUser();
 
-        return $this->handleEdit(true, $user, $submitted_data);
+        return $this->handleEdit(true, $user, $submitted_data, $request);
     }
 
     /**
@@ -140,7 +140,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
     {
         $submitted_data = $request->request->get('user');
 
-        return $this->handleEdit(false, $user, $submitted_data);
+        return $this->handleEdit(false, $user, $submitted_data, $request);
     }
 
     /**
@@ -239,7 +239,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
     /**
      * @return RedirectResponse|Response
      */
-    private function handleEdit(bool $is_profile_edit, User $user, $submitted_data)
+    private function handleEdit(bool $is_profile_edit, User $user, $submitted_data, Request $request)
     {
         $redirectRouteAfterSubmit = $is_profile_edit ? 'bolt_profile_edit' : 'bolt_users';
         $event = new UserEvent($user);
@@ -289,7 +289,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
 
             $form->submit($submitted_data);
         }
-        if ($form->isSubmitted() && $form->isValid()) {
+        if ($form->isSubmitted() && $form->isValid() && !$request->query->has('refresh-form')) {
             $this->handleValidFormSubmit($form);
 
             return $this->redirectToRoute($redirectRouteAfterSubmit);

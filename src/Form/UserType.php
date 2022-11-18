@@ -13,6 +13,7 @@ use Bolt\Repository\ContentRepository;
 use Bolt\Utils\LocaleHelper;
 use Doctrine\ORM\Cache\Region;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -49,7 +50,9 @@ class UserType extends AbstractType
      */
     private $requestStack;
 
-    public function __construct(LocaleHelper $localeHelper, Environment $twig, Config $config, Security $security, ContentRepository $contentRepository, RequestStack $requestStack)
+    private $managerRegistry;
+
+    public function __construct(LocaleHelper $localeHelper, Environment $twig, Config $config, Security $security, ContentRepository $contentRepository, RequestStack $requestStack, ManagerRegistry $managerRegistry)
     {
         $this->localeHelper = $localeHelper;
         $this->twig = $twig;
@@ -62,6 +65,7 @@ class UserType extends AbstractType
 
         $this->security = $security;
         $this->requestStack = $requestStack;
+        $this->managerRegistry = $managerRegistry;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -154,8 +158,8 @@ class UserType extends AbstractType
         $builder
             ->add('region', EntityType::class, [
                 'class' => Content::class,
-                'choice_label' => function (Content $country) {
-                    foreach ($country->getFields() as $field) {
+                'choice_label' => function (Content $region) {
+                    foreach ($region->getFields() as $field) {
                         if ($field->getName() === 'title') {
                             return $field->getValue()[0];
                         }
@@ -172,23 +176,26 @@ class UserType extends AbstractType
 
             ]);
 
+        $countries = [];
+        $em = $this->managerRegistry->getManager();
+        foreach ($options['data']->getCountries() as $country) {
+            $countries[] = $em->getReference('Bolt\Entity\Content', $country->getId());
+        }
+
         $builder->addEventListener(
             FormEvents::PRE_SET_DATA,
-            function (FormEvent $event) {
+            function (FormEvent $event) use($options, $countries) {
                 $form = $event->getForm();
 
-                // this would be your entity, i.e. SportMeetup
                 $data = $event->getData();
                 if (!$data) {
                     return;
                 }
 
-                $form->add('country', EntityType::class, [
-
+                $form->add('countries', EntityType::class, [
+                    'multiple' => true,
                     'class' => Content::class,
                     'choice_label' => function (Content $country) {
-                        $region = $this->requestStack->getCurrentRequest()->request->get('user[region]');
-
                         foreach ($country->getFields() as $field) {
                             if ($field->getName() === 'title') {
                                 return $field->getValue()[0];
@@ -196,8 +203,9 @@ class UserType extends AbstractType
                         }
                         return null;
                     },
-                    'query_builder' => function (EntityRepository $er) {
-                    $region = $this->requestStack->getCurrentRequest()->request->has('user') ? $this->requestStack->getCurrentRequest()->request->get('user')['region'] : 0;
+                    'data' => $countries,
+                    'query_builder' => function (EntityRepository $er) use($options) {
+                    $region = $this->requestStack->getCurrentRequest()->request->has('user') ? $this->requestStack->getCurrentRequest()->request->get('user')['region'] : $options['data']?->getRegion()?->getId();
                         return $er->createQueryBuilder('c')
                             ->select('c,f')
                             ->innerJoin('c.fields', 'f')
@@ -211,7 +219,6 @@ class UserType extends AbstractType
                 ]);
             }
         );
-
     }
 
     public function configureOptions(OptionsResolver $resolver): void

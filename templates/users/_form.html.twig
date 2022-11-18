@@ -138,7 +138,7 @@
     {# ===== REGION ===== #}
     {{ form_row(userForm.region) }}
 
-    {{ form_row(userForm.country) }}
+    {{ form_row(userForm.countries) }}
 
 
 
@@ -206,10 +206,9 @@
 {{ form_end(userForm) }}
 
 <script>
-
     const submitFormOnChange = (e) => {
+        const userRegion =  document.querySelector('#user_region');
         var formData = new FormData();
-        let userRegion =  document.querySelector('#user_region');
         for (let item of document.querySelector('#edituser').elements) {
             formData.append(item.name, item.value);
         }
@@ -217,23 +216,19 @@
         // document.querySelector('.loading').replaceWith('loading')
         var req = new XMLHttpRequest();
 
-        // TODO MAKE URL READ FROM .ENV
-        req.open('POST', '/bolt/user-edit/add');
+        // TODO: MAKE URL READ FROM .ENV
+        req.open('POST', '?refresh-form');
 
         req.onload = (event) => {
-
             const newElement = document.createElement('div');
             newElement.innerHTML = event.target.response;
-            const newCountry = newElement.querySelector('#user_country')
-            document.querySelector('#user_country').replaceWith(newCountry);
+            const newCountry = newElement.querySelector('#user_countries')
+            document.querySelector('#user_countries').replaceWith(newCountry);
+            userRegion.addEventListener("change", submitFormOnChange);
         }
         req.send(formData);
     }
-    document.querySelector('#user_region').addEventListener("change", submitFormOnChange);
-
-    let loadingState = false
-    setTimeout(() => {
-        submitFormOnChange()
-    }, 500)
-
+    window.addEventListener('load', () => {
+        document.querySelector('#user_region').addEventListener("change", submitFormOnChange);
+    })
 </script>

@@ -34,4 +34,10 @@
 {% block javascripts %}
     {{ encore_entry_script_tags('zxcvbn') }}
     {{ parent() }}
+    <script>
+        window.addEventListener('load', () => {
+            document.querySelector('#user_region').addEventListener("change", submitFormOnChange);
+            submitFormOnChange()
+        })
+    </script>
 {% endblock %}

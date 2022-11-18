@@ -7,6 +7,7 @@ namespace Bolt\Entity;
 use Bolt\Common\Json;
 use Bolt\Enum\UserStatus;
 use Cocur\Slugify\Slugify;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -145,14 +146,15 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
      */
     private ?Content $region = null;
 
-    /** @ORM\ManyToOne(
+    /** @ORM\ManyToMany(
      *     targetEntity="Bolt\Entity\Content"
      * )
      */
-    private ?Content $country = null;
+    private $countries;
 
     public function __construct()
     {
+        $this->countries = new ArrayCollection();
     }
 
     public function getId(): int
@@ -402,19 +404,24 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
         $this->region = $region;
     }
 
-    /**
-     * @return Content|null
-     */
-    public function getCountry(): ?Content
+    public function getCountries()
     {
-        return $this->country;
+        return $this->countries;
     }
 
-    /**
-     * @param Content|null $country
-     */
-    public function setCountry(?Content $country): void
+    public function addCountry(Content $country)
     {
-        $this->country = $country;
+        if (null === $this->countries) {
+            $this->countries = new ArrayCollection();
+        }
+        if ($this->countries->contains($country)) {
+            return;
+        }
+        $this->countries[] = $country;
+    }
+
+    public function removeCountry(Content $country)
+    {
+        $this->countries->removeElement($country);
     }
 }

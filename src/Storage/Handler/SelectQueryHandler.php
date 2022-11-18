@@ -12,6 +12,7 @@ use Bolt\Storage\SelectQuery;
 use Doctrine\ORM\Query;
 use Pagerfanta\Adapter\DoctrineORMAdapter;
 use Pagerfanta\Pagerfanta;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Security;
 
@@ -63,20 +64,25 @@ class SelectQueryHandler
         $selectQuery->doFieldJoins();
 
         $contentQuery->runDirectives($selectQuery);
-
-        if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER') {
+        if (null !== $security && $contentQuery->getContentTypes()[0] === "countries" && $security->isGranted('ROLE_COUNTRY_MANAGER')) {
+            if ($security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'countries') {
+                $qb->andWhere('content IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
+            }
+        }
+        if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->isGranted('ROLE_COUNTRY_MANAGER')) {
             if ($security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
-                    ->andWhere('rf.toContent=:country')
-                    ->setParameter('country', $security->getUser()->getCountry()->getId());
+                    ->andWhere('rf.toContent IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
             }
         }
 
         if ($selectQuery->shouldReturnSingle()) {
-            if (null !== $security && $security->getUser()->getRoles()[0] == 'ROLE_COUNTRY_MANAGER' && $contentQuery->getContentTypes()[0] === 'distributors') {
+            if (null !== $security && $security->isGranted('ROLE_COUNTRY_MANAGER') && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
-                    ->andWhere('rf.toContent=:country')
-                    ->setParameter('country', $security->getUser()->getCountry()->getId());
+                    ->andWhere('rf.toContent IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
             }
             return $qb
                 ->setMaxResults(1)
