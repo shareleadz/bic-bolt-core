@@ -24,6 +24,8 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 
 class UserEditController extends TwigAwareController implements BackendZoneInterface
 {
@@ -53,6 +55,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         UserPasswordHasherInterface $passwordHasher,
         CsrfTokenManagerInterface $csrfTokenManager,
         EventDispatcherInterface $dispatcher,
+        private readonly MailerInterface $mailer,
         Config $config,
         string $defaultLocale
     ) {
@@ -203,10 +206,21 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         // Get the adjusted User Entity from the form
         /** @var User $user */
         $user = $form->getData();
-
+        $mailer = $this->mailer;
+        $email = (new TemplatedEmail())
+                    ->from('bic@company.com')
+                    ->to($user->getEmail())
+                    ->subject('User Credentials')
+                    ->htmlTemplate('@main/email/new_distributor.twig')
+                    ->context([
+                        'username' => $user->getUsername(),
+                        'distributorEmail' => $user->getEmail(),
+                        'password' => $user->getPlainPassword(),
+                    ]);
         // Once validated, encode the password
         if ($user->getPlainPassword()) {
             $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPlainPassword()));
+            $mailer->send($email);
             $user->eraseCredentials();
         }
 
