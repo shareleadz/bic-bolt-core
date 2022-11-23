@@ -223,7 +223,10 @@
             const newElement = document.createElement('div');
             newElement.innerHTML = event.target.response;
             const newCountry = newElement.querySelector('#user_countries')
-            document.querySelector('#user_countries').replaceWith(newCountry);
+            console.log('newCountry', newCountry);
+            if (newCountry) {
+                document.querySelector('#user_countries').replaceWith(newCountry);
+            }
             userRegion.addEventListener("change", submitFormOnChange);
         }
         req.send(formData);

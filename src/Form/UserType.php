@@ -194,6 +194,7 @@ class UserType extends AbstractType
 
                 $form->add('countries', EntityType::class, [
                     'multiple' => true,
+                    'required' => false,
                     'class' => Content::class,
                     'choice_label' => function (Content $country) {
                         foreach ($country->getFields() as $field) {
