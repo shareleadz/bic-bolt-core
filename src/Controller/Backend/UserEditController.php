@@ -95,7 +95,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         $form = $this->createForm(UserType::class, $user, $form_data);
 
         // ON SUBMIT
-        if (! empty($submitted_data)) {
+        if (! empty($submitted_data) && !empty($submitted_data['roles'])) {
             // We need to transform to JSON.stringify value for the field "roles" into
             // an array so symfony forms validation works
             $submitted_data['roles'] = json_decode($submitted_data['roles']);
