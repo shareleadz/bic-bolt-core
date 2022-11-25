@@ -65,13 +65,13 @@ class SelectQueryHandler
 
         $contentQuery->runDirectives($selectQuery);
         if (null !== $security && $contentQuery->getContentTypes()[0] === "countries" && $security->isGranted('ROLE_COUNTRY_MANAGER')) {
-            if ($security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'countries') {
+            if (!$security->isGranted("ROLE_ADMIN") && $security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'countries') {
                 $qb->andWhere('content IN(:countries)')
                     ->setParameter('countries', $security->getUser()->getCountries());
             }
         }
         if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->isGranted('ROLE_COUNTRY_MANAGER')) {
-            if ($security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'distributors') {
+            if (!$security->isGranted("ROLE_ADMIN") && $security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
                     ->andWhere('rf.toContent IN(:countries)')
                     ->setParameter('countries', $security->getUser()->getCountries());
@@ -79,7 +79,7 @@ class SelectQueryHandler
         }
 
         if ($selectQuery->shouldReturnSingle()) {
-            if (null !== $security && $security->isGranted('ROLE_COUNTRY_MANAGER') && $contentQuery->getContentTypes()[0] === 'distributors') {
+            if (!$security->isGranted("ROLE_ADMIN") && null !== $security && $security->isGranted('ROLE_COUNTRY_MANAGER') && $contentQuery->getContentTypes()[0] === 'distributors') {
                 $qb->innerJoin('content.relationsFromThisContent', 'rf')
                     ->andWhere('rf.toContent IN(:countries)')
                     ->setParameter('countries', $security->getUser()->getCountries());

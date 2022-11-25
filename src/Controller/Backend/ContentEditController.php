@@ -288,7 +288,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $newDistributor->setUsername($username);
                 $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
 
-                $newDistributor->setCountry($this->getUser()->getCountry());
+                // $newDistributor->addCountry($this->getUser()->getCountry());
 
                 $content->setUser($newDistributor);
                 $content->setAuthor($content->getAuthor());
@@ -326,7 +326,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $cUser->setEmail($email);
                 $cUser->setDisplayName($username);
                 $cUser->setUsername($username);
-                $cUser->setCountry($this->getUser()->getCountry());
+                // $cUser->addCountry($this->getUser()->getCountry());
 
                 $content->getField('password')->setValue(null);
                 $content->getField('last_update')->setValue(new DateTime());
