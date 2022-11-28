@@ -264,7 +264,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
             $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $username, $cUser !== null ? $cUser->getId() : null);
 
-            if ($dupUser !== null) {
+            if ($dupUser > 0) {
                 $url = '/bolt/content/distributors';
 
                 if ($content->getId() !== null) {
@@ -302,7 +302,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
                 $newDistributorEmail = (new TemplatedEmail())
                     ->from('bic@company.com')
-                    ->to('rredouane342@gmail.com')
+                    ->to($newDistributor->getEmail())
                     ->subject('New distributor account')
                     ->htmlTemplate('email/new_distributor.twig')
                     ->context([

@@ -23,9 +23,10 @@ class UserRepository extends ServiceEntityRepository
     /**
      * @throws \Doctrine\ORM\NonUniqueResultException
      */
-    public function getUserByEmailOrUsername(string $email, string $username, ?int $userId = null): ?User
+    public function getUserByEmailOrUsername(string $email, string $username, ?int $userId = null): ?Int
     {
         $qb = $this->createQueryBuilder('u');
+        $qb->select('count(u)');
         $qb->where($qb->expr()->orX(
             $qb->expr()->eq('u.email', ':email'),
             $qb->expr()->eq('u.username', ':username')
@@ -37,7 +38,7 @@ class UserRepository extends ServiceEntityRepository
             $qb->andWhere('u.id != :userId');
             $qb->setParameter('userId', $userId);
         }
-        return $qb->getQuery()->getOneOrNullResult();
+        return $qb->getQuery()->getSingleScalarResult();
     }
 
     public function findOneByUsername(string $username): ?User
