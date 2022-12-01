@@ -207,15 +207,22 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         /** @var User $user */
         $user = $form->getData();
         $mailer = $this->mailer;
+        $role = $user->getRoles();
+        if ($role[0] == "ROLE_COUNTRY_MANAGER" ){
+            $path = "admin";
+        }else{
+            $path = "client";
+        }
         $email = (new TemplatedEmail())
-                    ->from('bic@company.com')
+                    ->from('bicplaybook@bic.com')
                     ->to($user->getEmail())
-                    ->subject('User Credentials')
+                    ->subject('Your account credentials')
                     ->htmlTemplate('@main/email/new_distributor.twig')
                     ->context([
                         'username' => $user->getUsername(),
                         'distributorEmail' => $user->getEmail(),
                         'password' => $user->getPlainPassword(),
+                        'path' => $path,
                     ]);
         // Once validated, encode the password
         if ($user->getPlainPassword()) {
