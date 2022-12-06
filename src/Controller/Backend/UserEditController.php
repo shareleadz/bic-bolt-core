@@ -287,11 +287,11 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         $form = $this->createForm(UserType::class, $user, $form_data);
 
         // ON SUBMIT
-        if (! empty($submitted_data) && !empty($submitted_data['roles'])) {
+        if (!empty($submitted_data) && !$request->query->has('refresh-form')) {
             // Since the username is disabled on edit form we need to set it here so Symfony Forms doesn't throw an error
             $submitted_data['username'] = $user->getUsername();
 
-            $submitted_data['locale'] = json_decode($submitted_data['locale'])[0];
+            $submitted_data['locale'] = !empty($submitted_data['locale']) ? json_decode($submitted_data['locale'])[0] : null;
 
             // Status is not available for profile edit on non admin users
             if (! empty($submitted_data['status'])) {
@@ -302,11 +302,11 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
             if (! empty($submitted_data['roles'])) {
                 // We need to transform to JSON.stringify value for the field "roles" into
                 // an array so symfony forms validation works
-                $submitted_data['roles'] = json_decode($submitted_data['roles']);
+                $submitted_data['roles'] = !empty($submitted_data['roles']) ? json_decode($submitted_data['roles']) : null;
             }
 
             // Transform media array to keep only filepath
-            $submitted_data['avatar'] = $submitted_data['avatar']['filename'];
+            $submitted_data['avatar'] = !empty($submitted_data['avatar']) ? $submitted_data['avatar']['filename'] : null;
 
             $form->submit($submitted_data);
         }
