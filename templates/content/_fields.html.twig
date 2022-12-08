@@ -3,16 +3,7 @@
     <div class="tab-pane {% if loop.first %}show active{% endif %}" id="{{ group|slug }}" role="tabpanel"
          aria-labelledby="{{ group|slug }}-tab">
 
-        {% if record.definition.slug === 'countries' %}
-            <label for="user">User</label><br>
-            <select name="user" id="user">
-               {% for u in users %}
-                   <option value="{{ u.id }}" {% if record and record.user and record.user.id === u.id %}selected{% endif %}>{{ u.email }}</option>
-               {% endfor %}
-            </select>
-            <br>
-            <br>
-        {% endif %}
+        
         
         {% for key, fielddefinition in record.definition.fields|filter(fielddefinition => fielddefinition.group == group) %}
             {% if record.hasField(key) %}

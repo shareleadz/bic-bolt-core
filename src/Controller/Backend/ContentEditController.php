@@ -141,12 +141,11 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
      */
     public function edit(Content $content, Request $request): Response
     {
-        $users = $this->userRepository->findAll();
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_VIEW, $content);
         $event = new ContentEvent($content);
         $this->dispatcher->dispatch($event, ContentEvent::ON_EDIT);
 
-        return $this->renderEditor($content, null, $users);
+        return $this->renderEditor($content);
     }
 
     /**
@@ -215,10 +214,6 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         /** @var Content $content */
         $content = $this->contentFromPost($originalContent);
 
-        if ($this->request->getMethod() === 'POST' && $request->request->has('user')) {
-            $contentUser = $this->userRepository->findOneBy(['id' => $request->request->get('user')]);
-            $content->setUser($contentUser);
-        }
 
         // check again on new/updated content, this is needed in case the save action is used to create a new item
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_EDIT, $content);
@@ -773,11 +768,10 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         return $post['_edit_locale'] ?? null;
     }
 
-    private function renderEditor(Content $content, $errors = null, array $users = null): Response
+    private function renderEditor(Content $content, $errors = null): Response
     {
         $twigvars = [
             'record' => $content,
-            'users' => $users,
             'locales' => $content->getLocales(),
             'defaultlocale' => $this->defaultLocale,
             'currentlocale' => $this->getEditLocale($content),
