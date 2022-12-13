@@ -208,10 +208,9 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         $user = $form->getData();
         $mailer = $this->mailer;
         $role = $user->getRoles();
-        if ($role[0] == "ROLE_COUNTRY_MANAGER" ){
+        $path = "client";
+        if (!empty($role) and in_array("ROLE_COUNTRY_MANAGER", $role)){
             $path = "admin";
-        }else{
-            $path = "client";
         }
         $email = (new TemplatedEmail())
                     ->from('bicplaybook@bic.com')
