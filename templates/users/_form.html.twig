@@ -136,10 +136,10 @@
     {% endif %}
 
     {# ===== REGION ===== #}
-    {{ form_row(userForm.regions) }}
-
-    {{ form_row(userForm.countries) }}
-
+    {% if userForm.regions is defined  and userForm.countries is defined %}
+        {{ form_row(userForm.regions) }}
+        {{ form_row(userForm.countries) }}
+    {% endif %}
 
 
 {# ===== STATUS ===== #}

@@ -139,7 +139,7 @@ class UserType extends AbstractType
          * Note that the profile edit screen never should show these options.
          */
         if ($options['is_profile_edit'] === false &&
-            ($this->security->isGranted('user:add') || $this->security->isGranted('user:delete'))) {
+            ($this->security->isGranted('user:add') )) {
             $builder
                 ->add('roles', ChoiceType::class, [
                     'choices' => $roleOptions,
@@ -154,79 +154,79 @@ class UserType extends AbstractType
 //            ->add('lastIp')
 //            ->add('backendTheme')
 //            ->add('userAuthToken')
-
-        $builder
-            ->add('regions', EntityType::class, [
-                'class' => Content::class,
-                'choice_label' => function (Content $region) {
-                    foreach ($region->getFields() as $field) {
-                        if ($field->getName() === 'title') {
-                            return $field->getValue()[0];
-                        }
-                    }
-                    return null;
-                },
-                'query_builder' => function (EntityRepository $er) {
-                    return $er->createQueryBuilder('r')
-                        ->select('r,f')
-                        ->innerJoin('r.fields', 'f')
-                        ->andWhere('r.contentType=:regions')
-                        ->setParameter('regions', "regions");
-                },
-                'multiple' => true,
-            ]);
-
-        $countries = [];
-        $regions = [];
-        $em = $this->managerRegistry->getManager();
-        foreach ($options['data']->getCountries() as $country) {
-            $countries[] = $em->getReference('Bolt\Entity\Content', $country->getId());
-        }
-        if($options['data']->getRegions() != null){
-            foreach ($options['data']->getRegions() as $r) {
-            $regions[] = $em->getReference('Bolt\Entity\Content', $r->getId());
-        }
-        }
-        $builder->addEventListener(
-            FormEvents::PRE_SET_DATA,
-            function (FormEvent $event) use($options, $countries, $regions) {
-                $form = $event->getForm();
-
-                $data = $event->getData();
-                if (!$data) {
-                    return;
-                }
-                $form->add('countries', EntityType::class, [
-                    'multiple' => true,
-                    'required' => false,
+    if ($options['is_profile_edit'] === false &&
+            ($this->security->isGranted('user:add') || $this->security->isGranted('user:delete'))) {
+            $builder
+                ->add('regions', EntityType::class, [
                     'class' => Content::class,
-                    'choice_label' => function (Content $country) {
-                        foreach ($country->getFields() as $field) {
+                    'choice_label' => function (Content $region) {
+                        foreach ($region->getFields() as $field) {
                             if ($field->getName() === 'title') {
                                 return $field->getValue()[0];
                             }
                         }
                         return null;
                     },
-                    'data' => $countries,
-                    'query_builder' => function (EntityRepository $er) use($regions) {
-                        $regions = $this->requestStack->getCurrentRequest()
-                        ->request->has('user') ? $this->requestStack->getCurrentRequest()
-                        ->request->get('user')['regions'] : $regions;
-                        return $er->createQueryBuilder('c')
-                            ->select('c,f')
-                            ->innerJoin('c.fields', 'f')
-                            ->innerJoin('c.relationsFromThisContent', 'rf')
-                            ->andWhere('c.contentType=:countries')
-                            ->andWhere('rf.toContent IN (:regions)')
-                            ->setParameter('countries', "countries")
-                            ->setParameter('regions',  $regions);
+                    'query_builder' => function (EntityRepository $er) {
+                        return $er->createQueryBuilder('r')
+                            ->select('r,f')
+                            ->innerJoin('r.fields', 'f')
+                            ->andWhere('r.contentType=:regions')
+                            ->setParameter('regions', "regions");
                     },
+                    'multiple' => true,
                 ]);
+            $countries = [];
+            $regions = [];
+            $em = $this->managerRegistry->getManager();
+            foreach ($options['data']->getCountries() as $country) {
+                $countries[] = $em->getReference('Bolt\Entity\Content', $country->getId());
             }
-        );
-    }
+            if($options['data']->getRegions() != null){
+                foreach ($options['data']->getRegions() as $r) {
+                $regions[] = $em->getReference('Bolt\Entity\Content', $r->getId());
+            }
+            }
+            $builder->addEventListener(
+                FormEvents::PRE_SET_DATA,
+                function (FormEvent $event) use($options, $countries, $regions) {
+                    $form = $event->getForm();
 
+                    $data = $event->getData();
+                    if (!$data) {
+                        return;
+                    }
+                    $form->add('countries', EntityType::class, [
+                        'multiple' => true,
+                        'required' => false,
+                        'class' => Content::class,
+                        'choice_label' => function (Content $country) {
+                            foreach ($country->getFields() as $field) {
+                                if ($field->getName() === 'title') {
+                                    return $field->getValue()[0];
+                                }
+                            }
+                            return null;
+                        },
+                        'data' => $countries,
+                        'query_builder' => function (EntityRepository $er) use($regions) {
+                            $regions = $this->requestStack->getCurrentRequest()
+                            ->request->has('user') ? $this->requestStack->getCurrentRequest()
+                            ->request->get('user')['regions'] : $regions;
+                            return $er->createQueryBuilder('c')
+                                ->select('c,f')
+                                ->innerJoin('c.fields', 'f')
+                                ->innerJoin('c.relationsFromThisContent', 'rf')
+                                ->andWhere('c.contentType=:countries')
+                                ->andWhere('rf.toContent IN (:regions)')
+                                ->setParameter('countries', "countries")
+                                ->setParameter('regions',  $regions);
+                        },
+                    ]);
+                }
+            );
+        }
+    }
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
