@@ -156,7 +156,7 @@ class UserType extends AbstractType
 //            ->add('userAuthToken')
 
         $builder
-            ->add('region', EntityType::class, [
+            ->add('regions', EntityType::class, [
                 'class' => Content::class,
                 'choice_label' => function (Content $region) {
                     foreach ($region->getFields() as $field) {
@@ -173,25 +173,29 @@ class UserType extends AbstractType
                         ->andWhere('r.contentType=:regions')
                         ->setParameter('regions', "regions");
                 },
-
+                'multiple' => true,
             ]);
 
         $countries = [];
+        $regions = [];
         $em = $this->managerRegistry->getManager();
         foreach ($options['data']->getCountries() as $country) {
             $countries[] = $em->getReference('Bolt\Entity\Content', $country->getId());
         }
-
+        if($options['data']->getRegions() != null){
+            foreach ($options['data']->getRegions() as $r) {
+            $regions[] = $em->getReference('Bolt\Entity\Content', $r->getId());
+        }
+        }
         $builder->addEventListener(
             FormEvents::PRE_SET_DATA,
-            function (FormEvent $event) use($options, $countries) {
+            function (FormEvent $event) use($options, $countries, $regions) {
                 $form = $event->getForm();
 
                 $data = $event->getData();
                 if (!$data) {
                     return;
                 }
-
                 $form->add('countries', EntityType::class, [
                     'multiple' => true,
                     'required' => false,
@@ -205,17 +209,18 @@ class UserType extends AbstractType
                         return null;
                     },
                     'data' => $countries,
-                    'query_builder' => function (EntityRepository $er) use($options) {
-                    $region = $this->requestStack->getCurrentRequest()->request->has('user') ? $this->requestStack->getCurrentRequest()->request->get('user')['region'] : $options['data']?->getRegion()?->getId();
+                    'query_builder' => function (EntityRepository $er) use($regions) {
+                        $regions = $this->requestStack->getCurrentRequest()
+                        ->request->has('user') ? $this->requestStack->getCurrentRequest()
+                        ->request->get('user')['regions'] : $regions;
                         return $er->createQueryBuilder('c')
                             ->select('c,f')
                             ->innerJoin('c.fields', 'f')
                             ->innerJoin('c.relationsFromThisContent', 'rf')
                             ->andWhere('c.contentType=:countries')
-                            ->andWhere('rf.toContent=:region')
+                            ->andWhere('rf.toContent IN (:regions)')
                             ->setParameter('countries', "countries")
-                            ->setParameter('region',  $region)
-                            ;
+                            ->setParameter('regions',  $regions);
                     },
                 ]);
             }

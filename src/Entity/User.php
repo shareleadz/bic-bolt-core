@@ -140,11 +140,16 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
         $this->profile = $profile;
     }
 
-    /** @ORM\ManyToOne(
+     /** @ORM\ManyToMany(
      *     targetEntity="Bolt\Entity\Content"
      * )
+     * @ORM\JoinTable(name="users_regions",
+     *    joinColumns={@ORM\JoinColumn(name="user_id", referencedColumnName="id")},
+     *    inverseJoinColumns={@ORM\JoinColumn(name="content_id", referencedColumnName="id")}
+     *   )
      */
-    private ?Content $region = null;
+    private $regions;
+
 
     /** @ORM\ManyToMany(
      *     targetEntity="Bolt\Entity\Content"
@@ -391,17 +396,28 @@ class User implements UserInterface, \Serializable, PasswordAuthenticatedUserInt
     /**
      * @return Content|null
      */
-    public function getRegion(): ?Content
+    public function getRegions()
     {
-        return $this->region;
+        return $this->regions;
     }
 
     /**
      * @param Content|null $region
      */
-    public function setRegion(?Content $region): void
+    public function addRegion(?Content $region): void
     {
-        $this->region = $region;
+        if (null === $this->regions) {
+            $this->regions = new ArrayCollection();
+        }
+        if ($this->regions->contains($region)) {
+            return;
+        }
+        $this->regions[] = $region;
+    }
+
+    public function removeRegion(Content $region)
+    {
+        $this->regions->removeElement($region);
     }
 
     public function getCountries()

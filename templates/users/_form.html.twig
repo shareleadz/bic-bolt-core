@@ -136,7 +136,7 @@
     {% endif %}
 
     {# ===== REGION ===== #}
-    {{ form_row(userForm.region) }}
+    {{ form_row(userForm.regions) }}
 
     {{ form_row(userForm.countries) }}
 
@@ -207,12 +207,17 @@
 
 <script>
     const submitFormOnChange = (e) => {
-        const userRegion =  document.querySelector('#user_region');
-        var formData = new FormData();
+    const userRegion =  document.querySelector('#user_regions');
+    var formData = new FormData();
         /* for (let item of document.querySelector('#edituser').elements) {
             formData.append(item.name, item.value);
         } */
-        formData.append(userRegion.name, userRegion.value);
+
+        for (const o of [...userRegion.options].filter(option => option.selected))
+        {
+            formData.append(userRegion.name, o.value)
+        }
+        //formData.append(userRegion.name, userRegion.value);
         // document.querySelector('.loading').replaceWith('loading')
         var req = new XMLHttpRequest();
 
@@ -232,6 +237,6 @@
         req.send(formData);
     }
     window.addEventListener('load', () => {
-        document.querySelector('#user_region').addEventListener("change", submitFormOnChange);
+        document.querySelector('#user_regions').addEventListener("change", submitFormOnChange);
     })
 </script>
