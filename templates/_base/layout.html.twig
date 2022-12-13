@@ -10,6 +10,17 @@
     <title>{{ block('title')|striptags }}</title>
     {% block stylesheets %}
     {% set theme = 'theme-' ~ app.user.backendTheme|default('default') %}
+    <style>
+        a[href="/bolt/content/distributors"] ul li {
+            visibility: hidden !important;
+            display: none;
+        }
+        a[href="/bolt/content/distributors"]:hover ul li.link--actions {
+            visibility: visible !important;
+            display: flex;
+        }
+    </style>
+
     {{ encore_entry_link_tags('bolt') }}
     {{ encore_entry_link_tags(theme) }}
     {% endblock %}
