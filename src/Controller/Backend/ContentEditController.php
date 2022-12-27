@@ -313,7 +313,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                 $url = '/bolt/content/distributors';
             } else {
                 $cUser = $content->getUser();
-                if ($plaintextPassword !== null) {
+                if ($plaintextPassword !== null and !empty($plaintextPassword)) {
                     $hashedPassword = $this->passwordHasher->hashPassword($cUser, $plaintextPassword);
                     $cUser->setPassword($hashedPassword);
                 }
