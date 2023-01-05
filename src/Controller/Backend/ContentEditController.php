@@ -45,7 +45,6 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Tightenco\Collect\Support\Collection;
-
 /**
  * CRUD + status, duplicate, for content - note that listing is handled by ListingController.php
  */
@@ -85,6 +84,8 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
     private $passwordHasher;
 
+    private $mailer;
+
     public function __construct(
         TaxonomyRepository $taxonomyRepository,
         RelationRepository $relationRepository,
@@ -96,6 +97,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         ContentFillListener $contentFillListener,
         EventDispatcherInterface $dispatcher,
         UserPasswordHasherInterface $passwordHasher,
+        MailerInterface $mailer,
         string $defaultLocale
     ) {
         $this->taxonomyRepository = $taxonomyRepository;
@@ -109,12 +111,13 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->dispatcher = $dispatcher;
         $this->defaultLocale = $defaultLocale;
         $this->passwordHasher = $passwordHasher;
+        $this->mailer = $mailer;
     }
 
     /**
      * @Route("/new/{contentType}", name="bolt_content_new", methods={"GET|POST"})
      */
-    public function new(string $contentType, Request $request, MailerInterface $mailer): Response
+    public function new(string $contentType): Response
     {
         $content = new Content();
 
@@ -130,16 +133,16 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
         if ($this->request->getMethod() === 'POST') {
 
-            return $this->save($content, null, $request, $mailer);
+            return $this->save($content);
         }
 
-        return $this->edit($content, $request);
+        return $this->edit($content);
     }
 
     /**
      * @Route("/edit/{id}", name="bolt_content_edit", methods={"GET"}, requirements={"id": "\d+"})
      */
-    public function edit(Content $content, Request $request): Response
+    public function edit(Content $content): Response
     {
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_VIEW, $content);
         $event = new ContentEvent($content);
@@ -194,7 +197,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
      * @throws \Doctrine\ORM\NonUniqueResultException
      * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
-    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null, Request $request, MailerInterface $mailer): Response
+    public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null): Response
     {
         $this->validateCsrf('editrecord');
         $url = null;
@@ -307,7 +310,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
                         'password' => $plaintextPassword,
                     ]);
 
-                $mailer->send($newDistributorEmail);
+                $this->mailer->send($newDistributorEmail);
 
                 $this->addFlash('success', 'user.created_successfully');
                 $url = '/bolt/content/distributors';
