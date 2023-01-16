@@ -24,8 +24,6 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 
 class UserEditController extends TwigAwareController implements BackendZoneInterface
 {
@@ -55,7 +53,6 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         UserPasswordHasherInterface $passwordHasher,
         CsrfTokenManagerInterface $csrfTokenManager,
         EventDispatcherInterface $dispatcher,
-        private readonly MailerInterface $mailer,
         Config $config,
         string $defaultLocale
     ) {
@@ -95,7 +92,10 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         $form = $this->createForm(UserType::class, $user, $form_data);
 
         // ON SUBMIT
-        if (! empty($submitted_data) && !empty($submitted_data['roles'])) {
+        // if (! empty($submitted_data)  && !empty($submitted_data['roles'])) {
+
+        if (!empty($submitted_data) && !empty($submitted_data['roles'])) {
+       
             // We need to transform to JSON.stringify value for the field "roles" into
             // an array so symfony forms validation works
             $submitted_data['roles'] = json_decode($submitted_data['roles']);
@@ -131,7 +131,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         /** @var User $user */
         $user = $this->getUser();
 
-        return $this->handleEdit(true, $user, $submitted_data, $request);
+        return $this->handleEdit(true, $user, $submitted_data);
     }
 
     /**
@@ -143,7 +143,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
     {
         $submitted_data = $request->request->get('user');
 
-        return $this->handleEdit(false, $user, $submitted_data, $request);
+        return $this->handleEdit(false, $user, $submitted_data);
     }
 
     /**
@@ -206,27 +206,10 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         // Get the adjusted User Entity from the form
         /** @var User $user */
         $user = $form->getData();
-        $mailer = $this->mailer;
-        $role = $user->getRoles();
-        $path = "client";
-        if (!empty($role) and in_array("ROLE_COUNTRY_MANAGER", $role)){
-            $path = "admin";
-        }
-        $email = (new TemplatedEmail())
-                    ->from('bicplaybook@bic.com')
-                    ->to($user->getEmail())
-                    ->subject('Your account credentials')
-                    ->htmlTemplate('@main/email/new_distributor.twig')
-                    ->context([
-                        'username' => $user->getUsername(),
-                        'distributorEmail' => $user->getEmail(),
-                        'password' => $user->getPlainPassword(),
-                        'path' => $path,
-                    ]);
+
         // Once validated, encode the password
         if ($user->getPlainPassword()) {
             $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPlainPassword()));
-            $mailer->send($email);
             $user->eraseCredentials();
         }
 
@@ -259,7 +242,7 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
     /**
      * @return RedirectResponse|Response
      */
-    private function handleEdit(bool $is_profile_edit, User $user, $submitted_data, Request $request)
+    private function handleEdit(bool $is_profile_edit, User $user, $submitted_data)
     {
         $redirectRouteAfterSubmit = $is_profile_edit ? 'bolt_profile_edit' : 'bolt_users';
         $event = new UserEvent($user);
@@ -286,11 +269,11 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         $form = $this->createForm(UserType::class, $user, $form_data);
 
         // ON SUBMIT
-        if (!empty($submitted_data) && !$request->query->has('refresh-form')) {
+        if (! empty($submitted_data)) {
             // Since the username is disabled on edit form we need to set it here so Symfony Forms doesn't throw an error
             $submitted_data['username'] = $user->getUsername();
 
-            $submitted_data['locale'] = !empty($submitted_data['locale']) ? json_decode($submitted_data['locale'])[0] : null;
+            $submitted_data['locale'] = json_decode($submitted_data['locale'])[0];
 
             // Status is not available for profile edit on non admin users
             if (! empty($submitted_data['status'])) {
@@ -301,15 +284,15 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
             if (! empty($submitted_data['roles'])) {
                 // We need to transform to JSON.stringify value for the field "roles" into
                 // an array so symfony forms validation works
-                $submitted_data['roles'] = !empty($submitted_data['roles']) ? json_decode($submitted_data['roles']) : null;
+                $submitted_data['roles'] = json_decode($submitted_data['roles']);
             }
 
             // Transform media array to keep only filepath
-            $submitted_data['avatar'] = !empty($submitted_data['avatar']) ? $submitted_data['avatar']['filename'] : null;
+            $submitted_data['avatar'] = $submitted_data['avatar']['filename'];
 
             $form->submit($submitted_data);
         }
-        if ($form->isSubmitted() && $form->isValid() && !$request->query->has('refresh-form')) {
+        if ($form->isSubmitted() && $form->isValid()) {
             $this->handleValidFormSubmit($form);
 
             return $this->redirectToRoute($redirectRouteAfterSubmit);
