@@ -17,23 +17,6 @@ body {
   position: absolute;
 }
 
-a[href="/bolt/content/distributors"] {
-	ul {
-		li {
-			visibility: hidden !important;
-			display: none;
-		}
-	}
-	&:hover {
-		ul {
-			li.link--actions {
-				visibility: visible !important;
-				display: flex;
-			}
-		}
-	}
-}
-
 label {
   font-weight: $font-weight-bold;
 }
@@ -110,4 +93,3 @@ input::placeholder {
   margin-top: -1.5rem;
   margin-bottom: 2rem;
 }
-
