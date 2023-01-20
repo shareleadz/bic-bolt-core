@@ -207,6 +207,12 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         /** @var User $user */
         $user = $form->getData();
 
+        // Once validated, encode the password
+        if ($user->getPlainPassword()) {
+            $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPlainPassword()));
+            $user->eraseCredentials();
+        }
+
         $event = new UserEvent($user);
         $this->dispatcher->dispatch($event, UserEvent::ON_PRE_SAVE);
 
