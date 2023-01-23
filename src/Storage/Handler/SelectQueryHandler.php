@@ -12,7 +12,9 @@ use Bolt\Storage\SelectQuery;
 use Doctrine\ORM\Query;
 use Pagerfanta\Adapter\DoctrineORMAdapter;
 use Pagerfanta\Pagerfanta;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Core\Security;
 
 /**
  *  Handler class to perform select query and return a resultset.
@@ -20,11 +22,24 @@ use Symfony\Component\HttpFoundation\Request;
 class SelectQueryHandler
 {
     /**
-     * @return Content|Pagerfanta|null
+     * @var Security|null
      */
-    public function __invoke(ContentQueryParser $contentQuery)
+    private $security;
+
+    public function __construct(Security $security = null)
     {
+        $this->security = $security;
+    }
+
+    /**
+     * @return Content|Pagerfanta|null
+     * @throws \Doctrine\ORM\NonUniqueResultException
+     */
+    public function __invoke(ContentQueryParser $contentQuery, Security $security = null)
+    {
+
         $repo = $contentQuery->getContentRepository();
+
         $qb = $repo->getQueryBuilder();
 
         /** @var SelectQuery $selectQuery */
@@ -39,7 +54,6 @@ class SelectQueryHandler
         $selectQuery->setParameters($contentQuery->getParameters());
 
         $contentQuery->runScopes($selectQuery);
-
         // This is required. Not entirely sure why.
         $selectQuery->build();
 
@@ -50,8 +64,26 @@ class SelectQueryHandler
         $selectQuery->doFieldJoins();
 
         $contentQuery->runDirectives($selectQuery);
+        if (null !== $security && $contentQuery->getContentTypes()[0] === "countries" && $security->isGranted('ROLE_COUNTRY_MANAGER') && !$security->isGranted("ROLE_ADMIN")) {
+            if (!$security->isGranted("ROLE_ADMIN") && $security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'countries') {
+                $qb->andWhere('content IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
+            }
+        }
+        if (null !== $security && $contentQuery->getContentTypes()[0] === "distributors" && $security->isGranted('ROLE_COUNTRY_MANAGER') && !$security->isGranted("ROLE_ADMIN")) {
+            if (!$security->isGranted("ROLE_ADMIN") && $security->isGranted("ROLE_COUNTRY_MANAGER") && $contentQuery->getContentTypes()[0] === 'distributors') {
+                $qb->innerJoin('content.relationsFromThisContent', 'rf')
+                    ->andWhere('rf.toContent IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
+            }
+        }
 
         if ($selectQuery->shouldReturnSingle()) {
+            if (null !== $security && $security->isGranted('ROLE_COUNTRY_MANAGER') && !$security->isGranted("ROLE_ADMIN") && $contentQuery->getContentTypes()[0] === 'distributors') {
+                $qb->innerJoin('content.relationsFromThisContent', 'rf')
+                    ->andWhere('rf.toContent IN(:countries)')
+                    ->setParameter('countries', $security->getUser()->getCountries());
+            }
             return $qb
                 ->setMaxResults(1)
                 ->getQuery()
