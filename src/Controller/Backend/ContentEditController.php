@@ -24,27 +24,21 @@ use Bolt\Repository\FieldRepository;
 use Bolt\Repository\MediaRepository;
 use Bolt\Repository\RelationRepository;
 use Bolt\Repository\TaxonomyRepository;
-use Bolt\Repository\UserRepository;
 use Bolt\Security\ContentVoter;
 use Bolt\Utils\TranslationsManager;
 use Bolt\Validator\ContentValidatorInterface;
 use Carbon\Carbon;
-use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Entity;
-use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Tightenco\Collect\Support\Collection;
+
 /**
  * CRUD + status, duplicate, for content - note that listing is handled by ListingController.php
  */
@@ -60,9 +54,6 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
     /** @var ContentRepository */
     private $contentRepository;
-
-    /** @var UserRepository */
-    private $userRepository;
 
     /** @var MediaRepository */
     private $mediaRepository;
@@ -82,36 +73,26 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     /** @var string */
     protected $defaultLocale;
 
-    private $passwordHasher;
-
-    private $mailer;
-
     public function __construct(
         TaxonomyRepository $taxonomyRepository,
         RelationRepository $relationRepository,
         ContentRepository $contentRepository,
-        UserRepository $userRepository,
         MediaRepository $mediaRepository,
         EntityManagerInterface $em,
         UrlGeneratorInterface $urlGenerator,
         ContentFillListener $contentFillListener,
         EventDispatcherInterface $dispatcher,
-        UserPasswordHasherInterface $passwordHasher,
-        MailerInterface $mailer,
         string $defaultLocale
     ) {
         $this->taxonomyRepository = $taxonomyRepository;
         $this->relationRepository = $relationRepository;
         $this->contentRepository = $contentRepository;
-        $this->userRepository = $userRepository;
         $this->mediaRepository = $mediaRepository;
         $this->em = $em;
         $this->urlGenerator = $urlGenerator;
         $this->contentFillListener = $contentFillListener;
         $this->dispatcher = $dispatcher;
         $this->defaultLocale = $defaultLocale;
-        $this->passwordHasher = $passwordHasher;
-        $this->mailer = $mailer;
     }
 
     /**
@@ -132,7 +113,6 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $this->contentFillListener->fillContent($content);
 
         if ($this->request->getMethod() === 'POST') {
-
             return $this->save($content);
         }
 
@@ -145,6 +125,7 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
     public function edit(Content $content): Response
     {
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_VIEW, $content);
+
         $event = new ContentEvent($content);
         $this->dispatcher->dispatch($event, ContentEvent::ON_EDIT);
 
@@ -194,13 +175,11 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
 
     /**
      * @Route("/edit/{id}", name="bolt_content_edit_post", methods={"POST"}, requirements={"id": "\d+"})
-     * @throws \Doctrine\ORM\NonUniqueResultException
-     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
     public function save(?Content $originalContent = null, ?ContentValidatorInterface $contentValidator = null): Response
     {
         $this->validateCsrf('editrecord');
-        $url = null;
+
         // pre-check on original content, store properties for later comparison
         if ($originalContent !== null) {
             $this->denyAccessUnlessGranted(ContentVoter::CONTENT_EDIT, $originalContent);
@@ -214,9 +193,8 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
             $originalDepublishedAt = null;
             $originalAuthor = null;
         }
-        /** @var Content $content */
-        $content = $this->contentFromPost($originalContent);
 
+        $content = $this->contentFromPost($originalContent);
 
         // check again on new/updated content, this is needed in case the save action is used to create a new item
         $this->denyAccessUnlessGranted(ContentVoter::CONTENT_EDIT, $content);
@@ -251,121 +229,21 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $event = new ContentEvent($content);
         $this->dispatcher->dispatch($event, ContentEvent::PRE_SAVE);
 
-        if ($content->getDefinition()->getSlug() === 'distributors') {
+        /* Note: Doctrine also calls preUpdate() -> Event/Listener/FieldFillListener.php */
+        $this->em->persist($content);
+        $this->em->flush();
 
-            /** @var User $cUser */
-            $cUser = $content->getId() !== null ? $content->getUser() : null;
+        $this->addFlash('success', 'content.updated_successfully');
 
-            $email = $content->getField('email')->getValue()[0];
-            $username = $content->getField('username')->getValue()[0];
-            $plaintextPassword = $content->getField('password')->getValue()[0];
+        $urlParams = [
+            'id' => $content->getId(),
+            'edit_locale' => $this->getEditLocale($content) ?: null,
+        ];
+        $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
 
-            $dupUser = $this->userRepository->getUserByEmailOrUsername($email, $username, $cUser !== null ? $cUser->getId() : null);
+        $event = new ContentEvent($content);
+        $this->dispatcher->dispatch($event, ContentEvent::POST_SAVE);
 
-            if ($dupUser > 0) {
-                $url = '/bolt/content/distributors';
-
-                if ($content->getId() !== null) {
-                    $urlParams = [
-                        'id' => $content->getId(),
-                        'edit_locale' => $this->getEditLocale($content) ?: null,
-                    ];
-                    $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
-                }
-                $this->addFlash('danger', 'information.user_already_exists');
-
-                return new RedirectResponse($url);
-            }
-
-            if ($content->getId() === null) {
-                $newDistributor = new User();
-                $newDistributor->setEmail($email);
-                $hashedPassword = $this->passwordHasher->hashPassword($newDistributor, $plaintextPassword);
-                $newDistributor->setPassword($hashedPassword);
-                $newDistributor->setDisplayName($username);
-                $newDistributor->setUsername($username);
-                $newDistributor->setRoles(["ROLE_DISTRIBUTOR"]);
-
-                // $newDistributor->addCountry($this->getUser()->getCountry());
-
-                $content->setUser($newDistributor);
-                $content->setAuthor($content->getAuthor());
-                $content->getField('password')->setValue(null);
-                $content->getField('last_update')->setValue(new DateTime());
-                $content->getField('updated_by')->setValue($this->getUser()->getUsername());
-
-                $this->em->persist($content);
-                $this->em->persist($newDistributor);
-                $this->em->flush();
-
-                $newDistributorEmail = (new TemplatedEmail())
-                    ->from('bic@company.com')
-                    ->to($newDistributor->getEmail())
-                    ->subject('New distributor account')
-                    ->htmlTemplate('email/new_distributor.twig')
-                    ->context([
-                        'username' => $newDistributor->getUsername(),
-                        'distributorEmail' => $newDistributor->getEmail(),
-                        'corp_name' => $content->getFieldValue('corp_name'),
-                        'password' => $plaintextPassword,
-                    ]);
-
-                $this->mailer->send($newDistributorEmail);
-
-                $this->addFlash('success', 'user.created_successfully');
-                $url = '/bolt/content/distributors';
-            } else {
-                $cUser = $content->getUser();
-                if ($plaintextPassword !== null and !empty($plaintextPassword)) {
-                    $hashedPassword = $this->passwordHasher->hashPassword($cUser, $plaintextPassword);
-                    $cUser->setPassword($hashedPassword);
-                }
-
-                $cUser->setEmail($email);
-                $cUser->setDisplayName($username);
-                $cUser->setUsername($username);
-                // $cUser->addCountry($this->getUser()->getCountry());
-
-                $content->getField('password')->setValue(null);
-                $content->getField('last_update')->setValue(new DateTime());
-                $content->getField('updated_by')->setValue($this->getUser()->getUsername());
-//                $content->getField('country')->setValue($this->getUser()->getCountry());
-                $content->setUser($cUser);
-                $this->em->persist($content);
-                $this->em->persist($cUser);
-                $this->em->flush();
-
-                $urlParams = [
-                    'id' => $content->getId(),
-                    'edit_locale' => $this->getEditLocale($content) ?: null,
-                ];
-                $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
-                $event = new ContentEvent($content);
-                $this->dispatcher->dispatch($event, ContentEvent::POST_SAVE);
-                $this->addFlash('success', 'user updated successfully');
-            }
-
-        } else {
-
-            $event = new ContentEvent($content);
-            $this->dispatcher->dispatch($event, ContentEvent::PRE_SAVE);
-
-            /* Note: Doctrine also calls preUpdate() -> Event/Listener/FieldFillListener.php */
-            $this->em->persist($content);
-            $this->em->flush();
-
-            $this->addFlash('success', 'content.updated_successfully');
-
-            $urlParams = [
-                'id' => $content->getId(),
-                'edit_locale' => $this->getEditLocale($content) ?: null,
-            ];
-            $url = $this->urlGenerator->generate('bolt_content_edit', $urlParams);
-
-            $event = new ContentEvent($content);
-            $this->dispatcher->dispatch($event, ContentEvent::POST_SAVE);
-
-        }
         return new RedirectResponse($url);
     }
 
@@ -449,23 +327,9 @@ class ContentEditController extends TwigAwareController implements BackendZoneIn
         $event = new ContentEvent($content);
         $this->dispatcher->dispatch($event, ContentEvent::PRE_DELETE);
 
-
-        $contentUser = $content->getUser();
         $this->em->remove($content);
         $this->em->flush();
-        if ($content->getDefinition()->getSlug() === 'distributors') {
 
-            $email = $content->getField('email')->getValue()[0];
-
-            /** @var User $cUser */
-            $cUser = $this->userRepository->findOneBy(['email' => $email]);
-
-            $this->em->remove($contentUser);
-            $this->em->flush();
-
-            $this->addFlash('success', 'user.deleted_successfully');
-
-        }
         $this->addFlash('success', 'content.deleted_successfully');
 
         $params = ['contentType' => $content->getContentTypeSlug()];

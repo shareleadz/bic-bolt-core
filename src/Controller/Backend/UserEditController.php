@@ -206,27 +206,10 @@ class UserEditController extends TwigAwareController implements BackendZoneInter
         // Get the adjusted User Entity from the form
         /** @var User $user */
         $user = $form->getData();
-        $mailer = $this->mailer;
-        $role = $user->getRoles();
-        $path = "client";
-        if (!empty($role) and in_array("ROLE_COUNTRY_MANAGER", $role)){
-            $path = "admin";
-        }
-        $email = (new TemplatedEmail())
-                    ->from('bicplaybook@bic.com')
-                    ->to($user->getEmail())
-                    ->subject('Your account credentials')
-                    ->htmlTemplate('@main/email/new_distributor.twig')
-                    ->context([
-                        'username' => $user->getUsername(),
-                        'distributorEmail' => $user->getEmail(),
-                        'password' => $user->getPlainPassword(),
-                        'path' => $path,
-                    ]);
+
         // Once validated, encode the password
         if ($user->getPlainPassword()) {
             $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPlainPassword()));
-            $mailer->send($email);
             $user->eraseCredentials();
         }
 
