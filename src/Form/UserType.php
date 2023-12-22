@@ -162,7 +162,7 @@ class UserType extends AbstractType
                     'choice_label' => function (Content $region) {
                         foreach ($region->getFields() as $field) {
                             if ($field->getName() === 'title') {
-                                return $field->getValue()[0];
+                                return html_entity_decode($field->getValue()[0]);
                             }
                         }
                         return null;
@@ -216,9 +216,11 @@ class UserType extends AbstractType
                             return $er->createQueryBuilder('c')
                                 ->select('c,f')
                                 ->innerJoin('c.fields', 'f')
-                                ->innerJoin('c.relationsFromThisContent', 'rf')
+                                ->leftJoin('c.relationsToThisContent', 'rt')
+                                ->leftJoin('c.relationsFromThisContent', 'rf')
                                 ->andWhere('c.contentType=:countries')
-                                ->andWhere('rf.toContent IN (:regions)')
+                                ->andWhere('rt.fromContent IN (:regions)')
+                                ->orWhere('rf.toContent IN (:regions)')
                                 ->setParameter('countries', "countries")
                                 ->setParameter('regions',  $regions);
                         },
