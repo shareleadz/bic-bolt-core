@@ -6,7 +6,9 @@ body {
     font-size: $font-size-largescreen;
   }
 }
-
+.admin__sidebar {
+  height: auto;
+}
 // Main Layout Grid
 .admin {
   margin-top: $admin-toolbar-height;
